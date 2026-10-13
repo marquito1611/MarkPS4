@@ -19,8 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install download tool
-        run: |
-          python -m pip install --upgrade gdown
+        run: python -m pip install --upgrade gdown
 
       - name: Download first theme PKG
         run: |
@@ -39,11 +38,8 @@ jobs:
           test -f app/Makefile
           test -f app/index.html
           test -f app/assets/assassins-creed.jpg
-
           test -s app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg
           test -s app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg
-
-          echo "All required files were found."
 
       - name: Prepare interface and themes
         run: |
