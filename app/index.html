@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkPS4</title>
+
+  <style>
+    :root {
+      --bg: #080b12;
+      --panel: #101723;
+      --panel-light: #172234;
+      --blue: #00baff;
+      --blue-dark: #087cff;
+      --white: #f4f8ff;
+      --muted: #8d9bb0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 75% 0%, #10243b 0%, transparent 45%),
+        var(--bg);
+      color: var(--white);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* BARRA LATERAL */
+
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      padding: 28px 16px;
+      background: rgba(10, 15, 24, 0.96);
+      border-right: 1px solid rgba(0, 186, 255, 0.18);
+    }
+
+    .logo {
+      margin: 0 0 8px;
+      font-size: 27px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .logo span {
+      color: var(--blue);
+    }
+
+    .subtitle {
+      margin-bottom: 38px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .nav-button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 15px 14px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .nav-button.active {
+      color: var(--white);
+      background: linear-gradient(
+        90deg,
+        rgba(0, 186, 255, 0.17),
+        rgba(0, 124, 255, 0.04)
+      );
+      border-color: rgba(0, 186, 255, 0.35);
+      box-shadow: inset 3px 0 var(--blue);
+    }
+
+    /* CONTENIDO PRINCIPAL */
+
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 36px;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 29px;
+      font-weight: 800;
+    }
+
+    .page-description {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .version {
+      padding: 9px 12px;
+      color: var(--blue);
+      background: rgba(0, 186, 255, 0.08);
+      border: 1px solid rgba(0, 186, 255, 0.25);
+      border-radius: 8px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .section-label {
+      margin: 0 0 16px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    .theme-card {
+      width: 100%;
+      max-width: 720px;
+      padding: 18px;
+      overflow: hidden;
+      background: linear-gradient(145deg, #131e2e, #0d131e);
+      border: 1px solid rgba(0, 186, 255, 0.23);
+      border-radius: 17px;
+      box-shadow: 0 15px 45px rgba(0, 0, 0, 0.28);
+    }
+
+    /* IMAGEN DEL TEMA: 16:10 */
+
+    .theme-image {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: contain;
+      background: #080b12;
+      border: 1px solid rgba(0, 190, 255, 0.35);
+      border-radius: 14px;
+      box-shadow: 0 0 18px rgba(0, 150, 255, 0.12);
+    }
+
+    .theme-info {
+      padding: 19px 2px 2px;
+    }
+
+    .theme-name {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    .theme-description {
+      margin: 9px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-bottom: 18px;
+      padding: 7px 10px;
+      color: #a5e8ff;
+      background: rgba(0, 186, 255, 0.09);
+      border: 1px solid rgba(0, 186, 255, 0.2);
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .install-button {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      color: #00111b;
+      background: linear-gradient(100deg, var(--blue), var(--blue-dark));
+      border: 0;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.2s;
+    }
+
+    .install-button:hover {
+      filter: brightness(1.13);
+    }
+
+    .install-button:active {
+      transform: scale(0.99);
+    }
+
+    .install-button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    /* PROGRESO */
+
+    .progress-area {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .progress-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+
+    .progress-message {
+      color: var(--muted);
+    }
+
+    .progress-percent {
+      color: var(--blue);
+      font-weight: bold;
+    }
+
+    .progress-track {
+      height: 8px;
+      overflow: hidden;
+      background: #222e40;
+      border-radius: 20px;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue-dark), #55e5ff);
+      border-radius: 20px;
+      transition: width 0.2s;
+    }
+
+    .notice {
+      margin-top: 16px;
+      color: #73849b;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .empty-state {
+      max-width: 720px;
+      padding: 35px 20px;
+      color: var(--muted);
+      background: var(--panel);
+      border: 1px solid #202d3f;
+      border-radius: 14px;
+      text-align: center;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--white);
+      font-size: 18px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 650px) {
+      .sidebar {
+        width: 135px;
+        padding: 20px 9px;
+      }
+
+      .logo {
+        font-size: 21px;
+      }
+
+      .main {
+        padding: 20px 12px;
+      }
+
+      .page-title {
+        font-size: 23px;
+      }
+
+      .version {
+        display: none;
+      }
+
+      .theme-card {
+        padding: 12px;
+      }
+
+      .theme-name {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <aside class="sidebar">
+      <h1 class="logo">Mark<span>PS4</span></h1>
+      <div class="subtitle">THEME CENTER</div>
+
+      <button class="nav-button active" id="themesTab"
+              onclick="showSection('themes')">
+        🎨 &nbsp; Temas
+      </button>
+
+      <button class="nav-button" id="installedTab"
+              onclick="showSection('installed')">
+        ✓ &nbsp; Instalados
+      </button>
+    </aside>
+
+    <main class="main">
+
+      <div class="topline">
+        <div>
+          <h2 class="page-title" id="pageTitle">Biblioteca de temas</h2>
+          <div class="page-description" id="pageDescription">
+            Personaliza tu PS4 a tu estilo.
+          </div>
+        </div>
+
+        <div class="version">MARKPS4 · PS4</div>
+      </div>
+
+      <section id="themesSection">
+        <p class="section-label">TEMA DESTACADO</p>
+
+        <article class="theme-card">
+
+          <!-- La imagen se carga desde app/assets/assassins-creed.jpg -->
+          <img
+            class="theme-image"
+            src="assets/assassins-creed.jpg"
+            alt="Tema de Assassin's Creed"
+          >
+
+          <div class="theme-info">
+            <h3 class="theme-name">Assassin's Creed</h3>
+
+            <p class="theme-description">
+              Dale a tu PS4 una apariencia inspirada en Assassin's Creed.
+            </p>
+
+            <span class="tag">TEMA PARA PS4</span>
+
+            <button class="install-button" id="installButton"
+                    onclick="startDemo()">
+              INSTALAR TEMA
+            </button>
+
+            <div class="progress-area" id="progressArea">
+              <div class="progress-top">
+                <span class="progress-message" id="progressMessage">
+                  Preparando...
+                </span>
+                <span class="progress-percent" id="progressPercent">0%</span>
+              </div>
+
+              <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+            </div>
+
+            <p class="notice">
+              La instalación real debe conectarse al sistema de instalación
+              de PKG de PS4. Esta interfaz, por sí sola, no instala paquetes.
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section id="installedSection" hidden>
+        <p class="section-label">TU COLECCIÓN</p>
+
+        <div class="empty-state" id="emptyState">
+          <strong>Aún no hay temas registrados</strong>
+          Los temas instalados aparecerán aquí.
+        </div>
+
+        <article class="theme-card" id="installedCard" hidden>
+          <img
+            class="theme-image"
+            src="assets/assassins-creed.jpg"
+            alt="Tema de Assassin's Creed instalado"
+          >
+          <div class="theme-info">
+            <h3 class="theme-name">Assassin's Creed</h3>
+            <p class="theme-description">
+              Instalación marcada como completada en esta demostración.
+            </p>
+            <span class="tag">✓ COMPLETADO EN LA DEMOSTRACIÓN</span>
+          </div>
+        </article>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    function showSection(section) {
+      const isThemes = section === 'themes';
+
+      document.getElementById('themesSection').hidden = !isThemes;
+      document.getElementById('installedSection').hidden = isThemes;
+
+      document.getElementById('themesTab').classList.toggle(
+        'active', isThemes
+      );
+      document.getElementById('installedTab').classList.toggle(
+        'active', !isThemes
+      );
+
+      document.getElementById('pageTitle').textContent = isThemes
+        ? 'Biblioteca de temas'
+        : 'Temas instalados';
+
+      document.getElementById('pageDescription').textContent = isThemes
+        ? 'Personaliza tu PS4 a tu estilo.'
+        : 'Consulta tus temas registrados.';
+    }
+
+    /*
+      DEMOSTRACIÓN VISUAL:
+      Este progreso es simulado y NO instala archivos PKG.
+      Debe sustituirse por el progreso real del instalador.
+    */
+    function startDemo() {
+      const button = document.getElementById('installButton');
+      const area = document.getElementById('progressArea');
+      const fill = document.getElementById('progressFill');
+      const percent = document.getElementById('progressPercent');
+      const message = document.getElementById('progressMessage');
+
+      if (button.disabled) return;
+
+      button.disabled = true;
+      button.textContent = 'PROCESANDO...';
+      area.style.display = 'block';
+
+      let value = 0;
+
+      const demo = setInterval(() => {
+        value = Math.min(value + 5, 100);
+
+        fill.style.width = value + '%';
+        percent.textContent = value + '%';
+
+        if (value < 100) {
+          message.textContent = 'Demostración de progreso...';
+        } else {
+          clearInterval(demo);
+          message.textContent = 'Demostración completada';
+          button.textContent = 'DEMO COMPLETADA';
+
+          document.getElementById('emptyState').hidden = true;
+          document.getElementById('installedCard').hidden = false;
+
+          setTimeout(() => showSection('installed'), 800);
+        }
+      }, 150);
+    }
+  </script>
+</body>
+</html>
