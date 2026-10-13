@@ -1,17 +1,18 @@
-name: Build MarkPS4
+name: Validate MarkPS4 assets
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - 'codex/**'
 
 permissions:
   contents: read
 
 jobs:
   prepare:
-    name: Download MarkPS4 files
+    name: Validate theme assets and prepare preview
     runs-on: ubuntu-latest
 
     steps:
@@ -32,14 +33,14 @@ jobs:
           gdown "1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR" \
             -O "app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg"
             
-      - name: Verify project files
+      - name: Verify project files and PKG signatures
         run: |
           echo "=== Archivos encontrados ==="
           find app -maxdepth 3 -type f -printf '%p (%s bytes)\n' || true
 
           echo "=== Comprobando archivos necesarios ==="
           for f in \
-            app/main.cpp \
+            app/source/main.cpp \
             app/Makefile \
             app/index.html \
             app/assets/assassins-creed.jpg \
@@ -49,9 +50,26 @@ jobs:
             if test -s "$f"; then
               echo "OK: $f"
             else
-              echo "FALTA O ESTA VACIO: $f"
+              echo "FALTA O ESTA VACIO: $f" >&2
+              exit 1
             fi
           done
+
+      - name: Verify PS4 PKG headers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          files = [
+              Path("app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg"),
+              Path("app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg"),
+          ]
+          for path in files:
+              with path.open("rb") as f:
+                  header = f.read(5)
+              if header != bytes([0x7f]) + b"CNT":
+                  raise SystemExit(f"ERROR: {path.name} does not start with a PS4 PKG header")
+              print(f"PKG header OK: {path.name} ({path.stat().st_size} bytes)")
+          PY
 
       - name: Prepare interface and themes
         run: |
@@ -63,6 +81,6 @@ jobs:
       - name: Upload prepared files
         uses: actions/upload-artifact@v4
         with:
-          name: MarkPS4-prepared-files
+          name: MarkPS4-preview-assets-not-installable
           path: build/MarkPS4/
           if-no-files-found: error
