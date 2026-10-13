@@ -55,6 +55,29 @@ jobs:
             fi
           done
 
+      - name: Validate embedded JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("app/index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, flags=re.S | re.I)
+          if len(scripts) != 1:
+              raise SystemExit(f"Expected one inline script, found {len(scripts)}")
+          Path("build-markps4-inline.js").write_text(scripts[0], encoding="utf-8")
+          required = [
+              "/api/engine/fetch?",
+              "/api/download/status",
+              "/api/install",
+              "https://drive.usercontent.google.com/download?id="
+          ]
+          for token in required:
+              if token not in html:
+                  raise SystemExit(f"Missing runtime download/install integration: {token}")
+          print("Frontend download/install routes are present.")
+          PY
+          node --check build-markps4-inline.js
+
       - name: Verify PS4 PKG headers
         run: |
           python - <<'PY'
