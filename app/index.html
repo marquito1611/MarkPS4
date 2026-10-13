@@ -367,7 +367,7 @@
             <span class="tag">TEMA PARA PS4</span>
 
             <button class="install-button" id="installButton"
-                    onclick="startDemo()">
+                    onclick="installTheme()">
               INSTALAR TEMA
             </button>
 
@@ -385,8 +385,7 @@
             </div>
 
             <p class="notice">
-              La instalación real debe conectarse al sistema de instalación
-              de PKG de PS4. Esta interfaz, por sí sola, no instala paquetes.
+              La app se conecta al instalador de PS4. No cierres la aplicación mientras se procesan los dos paquetes.
             </p>
           </div>
         </article>
@@ -409,9 +408,9 @@
           <div class="theme-info">
             <h3 class="theme-name">Assassin's Creed</h3>
             <p class="theme-description">
-              Instalación marcada como completada en esta demostración.
+              Tema instalado y verificado en el sistema de PS4.
             </p>
-            <span class="tag">✓ COMPLETADO EN LA DEMOSTRACIÓN</span>
+            <span class="tag">✓ INSTALADO</span>
           </div>
         </article>
       </section>
@@ -420,68 +419,143 @@
   </div>
 
   <script>
+    /*
+     * MarkPS4 Theme Store frontend.
+     * The on-console payload exposes the real BGFT installer on port 8710.
+     * Package paths must exist on the payload's filesystem; this frontend
+     * deliberately reports backend errors instead of faking progress.
+     */
+    const API_BASE = (location.protocol === 'http:' || location.protocol === 'https:')
+      ? location.origin : 'http://127.0.0.1:8710';
+
+    const PACKAGES = [
+      { name: 'Activación del tema', path: '/app0/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg' },
+      { name: 'Tema Assassin’s Creed', path: '/app0/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg' }
+    ];
+
+    let installing = false;
+    let installedItems = [];
+
+    async function api(path, options = {}) {
+      const response = await fetch(API_BASE + path, {
+        cache: 'no-store',
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+      });
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); }
+      catch { throw new Error('El instalador devolvió una respuesta no válida (' + response.status + ').'); }
+      if (!response.ok) throw new Error(data.error || ('Error HTTP ' + response.status));
+      return data;
+    }
+
     function showSection(section) {
       const isThemes = section === 'themes';
-
       document.getElementById('themesSection').hidden = !isThemes;
       document.getElementById('installedSection').hidden = isThemes;
-
-      document.getElementById('themesTab').classList.toggle(
-        'active', isThemes
-      );
-      document.getElementById('installedTab').classList.toggle(
-        'active', !isThemes
-      );
-
-      document.getElementById('pageTitle').textContent = isThemes
-        ? 'Biblioteca de temas'
-        : 'Temas instalados';
-
+      document.getElementById('themesTab').classList.toggle('active', isThemes);
+      document.getElementById('installedTab').classList.toggle('active', !isThemes);
+      document.getElementById('pageTitle').textContent = isThemes ? 'Biblioteca de temas' : 'Temas instalados';
       document.getElementById('pageDescription').textContent = isThemes
-        ? 'Personaliza tu PS4 a tu estilo.'
-        : 'Consulta tus temas registrados.';
+        ? 'Personaliza tu PS4 a tu estilo.' : 'Consulta los temas detectados en tu consola.';
+      if (!isThemes) refreshInstalled();
     }
 
-    /*
-      DEMOSTRACIÓN VISUAL:
-      Este progreso es simulado y NO instala archivos PKG.
-      Debe sustituirse por el progreso real del instalador.
-    */
-    function startDemo() {
+    function setProgress(message, percent) {
+      document.getElementById('progressArea').style.display = 'block';
+      document.getElementById('progressMessage').textContent = message;
+      document.getElementById('progressPercent').textContent =
+        Number.isFinite(percent) ? Math.max(0, Math.min(100, Math.round(percent))) + '%' : '…';
+      document.getElementById('progressFill').style.width =
+        Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) + '%' : '0%';
+    }
+
+    async function pollJob(packageName) {
+      const deadline = Date.now() + 60 * 60 * 1000;
+      while (Date.now() < deadline) {
+        const job = await api('/api/engine/job');
+        const total = Number(job.total || 0);
+        const done = Number(job.done || 0);
+        const percent = total > 0 ? done / total * 100 : NaN;
+        setProgress(job.msg || ('Instalando: ' + packageName), percent);
+        if (job.state === 'installed') return;
+        if (job.state === 'error') throw new Error(job.msg || ('Falló la instalación de ' + packageName));
+        await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+      throw new Error('Se agotó el tiempo de espera. Comprueba el estado de la instalación en la PS4.');
+    }
+
+    async function installOne(pkg) {
+      setProgress('Preparando ' + pkg.name + '…', NaN);
+      const result = await api('/api/install', {
+        method: 'POST',
+        body: JSON.stringify({ install_key: 'local:' + pkg.path, name: pkg.name })
+      });
+      if (!result.ok) throw new Error(result.error || ('No se pudo iniciar ' + pkg.name));
+      await pollJob(pkg.name);
+    }
+
+    async function installTheme() {
+      if (installing) return;
       const button = document.getElementById('installButton');
-      const area = document.getElementById('progressArea');
-      const fill = document.getElementById('progressFill');
-      const percent = document.getElementById('progressPercent');
-      const message = document.getElementById('progressMessage');
-
-      if (button.disabled) return;
-
+      installing = true;
       button.disabled = true;
-      button.textContent = 'PROCESANDO...';
-      area.style.display = 'block';
-
-      let value = 0;
-
-      const demo = setInterval(() => {
-        value = Math.min(value + 5, 100);
-
-        fill.style.width = value + '%';
-        percent.textContent = value + '%';
-
-        if (value < 100) {
-          message.textContent = 'Demostración de progreso...';
-        } else {
-          clearInterval(demo);
-          message.textContent = 'Demostración completada';
-          button.textContent = 'DEMO COMPLETADA';
-
-          document.getElementById('emptyState').hidden = true;
-          document.getElementById('installedCard').hidden = false;
-
-          setTimeout(() => showSection('installed'), 800);
+      button.textContent = 'INSTALANDO…';
+      try {
+        const health = await api('/api/health');
+        if (!health.ok || health.platform !== 'ps4') throw new Error('No se detectó el instalador de PS4.');
+        for (let i = 0; i < PACKAGES.length; i++) {
+          setProgress('Paquete ' + (i + 1) + ' de ' + PACKAGES.length + ': ' + PACKAGES[i].name, 0);
+          await installOne(PACKAGES[i]);
         }
-      }, 150);
+        await refreshInstalled();
+        setProgress('Los dos paquetes se instalaron correctamente.', 100);
+        button.textContent = 'TEMA INSTALADO';
+        showSection('installed');
+      } catch (error) {
+        setProgress('No se completó la instalación: ' + (error.message || error), NaN);
+        button.textContent = 'REINTENTAR INSTALACIÓN';
+        button.disabled = false;
+      } finally {
+        installing = false;
+      }
     }
+
+    async function refreshInstalled() {
+      const empty = document.getElementById('emptyState');
+      const card = document.getElementById('installedCard');
+      try {
+        const data = await api('/api/installed');
+        const list = Array.isArray(data) ? data : (data.items || data.installed || []);
+        const match = list.some(item => {
+          const value = String(item.title || item.name || item.title_id || item.titleId || '').toLowerCase();
+          return value.includes('cusa09303') || value.includes('assassin') || value.includes('acdnewtheme');
+        });
+        empty.hidden = match;
+        card.hidden = !match;
+      } catch (_) {
+        // Do not claim a theme is installed if the console cannot verify it.
+        empty.hidden = false;
+        card.hidden = true;
+        empty.querySelector('strong').textContent = 'No se pudo consultar la PS4';
+        empty.lastChild.textContent = 'Comprueba que el payload de MarkPS4 está activo y vuelve a intentarlo.';
+      }
+    }
+
+    async function checkConnection() {
+      try {
+        const health = await api('/api/health');
+        if (health.ok) {
+          document.querySelector('.version').textContent = 'MARKPS4 · PS4 CONECTADA';
+          document.querySelector('.version').style.color = '#61e7a8';
+        }
+      } catch (_) {
+        document.querySelector('.version').textContent = 'MARKPS4 · ESPERANDO PS4';
+      }
+    }
+
+    checkConnection();
   </script>
 </body>
 </html>
