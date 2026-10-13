@@ -428,9 +428,18 @@
     const API_BASE = (location.protocol === 'http:' || location.protocol === 'https:')
       ? location.origin : 'http://127.0.0.1:8710';
 
+    const PACKAGE_DIR = '/data/markps4/packages';
     const PACKAGES = [
-      { name: 'Activación del tema', path: '/data/markps4/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg' },
-      { name: 'Tema Assassin’s Creed', path: '/data/markps4/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg' }
+      {
+        name: 'Activación del tema',
+        file: '1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg',
+        driveId: '1KK8yqBinHkxRbuLCY4O4tJzApXvPYm2n'
+      },
+      {
+        name: 'Tema Assassin’s Creed',
+        file: '2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg',
+        driveId: '1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR'
+      }
     ];
 
     let installing = false;
@@ -493,11 +502,46 @@
       throw new Error('Se agotó el tiempo de espera. Comprueba el estado de la instalación en la PS4.');
     }
 
+    async function downloadOne(pkg) {
+      const url = 'https://drive.usercontent.google.com/download?id='
+        + encodeURIComponent(pkg.driveId) + '&export=download&confirm=t';
+      const query = new URLSearchParams({
+        url,
+        dest: PACKAGE_DIR,
+        name: pkg.file,
+        purpose: 'pkg'
+      });
+      setProgress('Descargando ' + pkg.name + ' desde Google Drive…', 0);
+      const started = await api('/api/engine/fetch?' + query.toString());
+      if (!started.ok || !started.started || started.job_id == null) {
+        throw new Error(started.error || ('No se pudo iniciar la descarga de ' + pkg.name));
+      }
+
+      const deadline = Date.now() + 60 * 60 * 1000;
+      while (Date.now() < deadline) {
+        const status = await api('/api/download/status');
+        if (String(status.job_id) !== String(started.job_id)) {
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          continue;
+        }
+        const pct = Number(status.pct);
+        setProgress(status.msg || ('Descargando ' + pkg.name + '…'),
+          Number.isFinite(pct) ? pct : NaN);
+        if (status.state === 'done') return;
+        if (status.state === 'error') {
+          throw new Error(status.msg || ('Falló la descarga de ' + pkg.name));
+        }
+        await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+      throw new Error('La descarga de ' + pkg.name + ' tardó demasiado. Comprueba la conexión de la PS4.');
+    }
+
     async function installOne(pkg) {
-      setProgress('Preparando ' + pkg.name + '…', NaN);
+      const path = PACKAGE_DIR + '/' + pkg.file;
+      setProgress('Instalando ' + pkg.name + '…', NaN);
       const result = await api('/api/install', {
         method: 'POST',
-        body: JSON.stringify({ install_key: 'local:' + pkg.path, name: pkg.name })
+        body: JSON.stringify({ install_key: 'local:' + path, name: pkg.name })
       });
       if (!result.ok) throw new Error(result.error || ('No se pudo iniciar ' + pkg.name));
       if (result.job_id == null) throw new Error('La PS4 aceptó la solicitud, pero no devolvió el identificador de instalación.');
@@ -509,16 +553,19 @@
       const button = document.getElementById('installButton');
       installing = true;
       button.disabled = true;
-      button.textContent = 'INSTALANDO…';
+      button.textContent = 'DESCARGANDO…';
       try {
         const health = await api('/api/health');
         if (!health.ok || health.platform !== 'ps4') throw new Error('No se detectó el instalador de PS4.');
         for (let i = 0; i < PACKAGES.length; i++) {
-          setProgress('Paquete ' + (i + 1) + ' de ' + PACKAGES.length + ': ' + PACKAGES[i].name, 0);
-          await installOne(PACKAGES[i]);
+          const pkg = PACKAGES[i];
+          setProgress('Paquete ' + (i + 1) + ' de ' + PACKAGES.length + ': descargando ' + pkg.name, 0);
+          await downloadOne(pkg);
+          setProgress('Descarga completada. Instalando ' + pkg.name + '…', NaN);
+          await installOne(pkg);
         }
         await refreshInstalled();
-        setProgress('Los dos paquetes se instalaron correctamente.', 100);
+        setProgress('Los dos paquetes se descargaron e instalaron correctamente.', 100);
         button.textContent = 'TEMA INSTALADO';
         showSection('installed');
       } catch (error) {
