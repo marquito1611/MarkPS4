@@ -1,0 +1,32 @@
+name: Build MarkPS4 Theme Store
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Compilar aplicación PS4
+        uses: OpenOrbis/toolchain-action@main
+        with:
+          version: v0.5.1
+          command: |
+            cd app
+            make
+            PkgTool.Core pkg_build pkg/pkg.gp4 .
+
+      - name: Publicar PKG compilado
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkPS4-Theme-Store
+          path: app/*.pkg
+          if-no-files-found: error
+          retention-days: 14
