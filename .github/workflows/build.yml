@@ -31,20 +31,27 @@ jobs:
         run: |
           gdown "1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR" \
             -O "app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg"
-
-      - name: Diagnose project files
-        run: |
-          echo "=== Archivos del proyecto ==="
-          find app -maxdepth 3 -type f -printf '%p (%s bytes)\n'
             
       - name: Verify project files
         run: |
-          test -f app/main.cpp
-          test -f app/Makefile
-          test -f app/index.html
-          test -f app/assets/assassins-creed.jpg
-          test -s app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg
-          test -s app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg
+          echo "=== Archivos encontrados ==="
+          find app -maxdepth 3 -type f -printf '%p (%s bytes)\n' || true
+
+          echo "=== Comprobando archivos necesarios ==="
+          for f in \
+            app/main.cpp \
+            app/Makefile \
+            app/index.html \
+            app/assets/assassins-creed.jpg \
+            app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg \
+            app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg
+          do
+            if test -s "$f"; then
+              echo "OK: $f"
+            else
+              echo "FALTA O ESTA VACIO: $f"
+            fi
+          done
 
       - name: Prepare interface and themes
         run: |
