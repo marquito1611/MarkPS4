@@ -471,10 +471,17 @@
         Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) + '%' : '0%';
     }
 
-    async function pollJob(packageName) {
+    async function pollJob(packageName, expectedJobId) {
       const deadline = Date.now() + 60 * 60 * 1000;
       while (Date.now() < deadline) {
         const job = await api('/api/engine/job');
+        // Never accept a completed job left over from an earlier installation.
+        // The POST response gives us the job_id that this exact package created.
+        if (expectedJobId != null && String(job.job_id) !== String(expectedJobId)) {
+          setProgress('Esperando que la PS4 registre: ' + packageName, NaN);
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          continue;
+        }
         const total = Number(job.total || 0);
         const done = Number(job.done || 0);
         const percent = total > 0 ? done / total * 100 : NaN;
@@ -493,7 +500,8 @@
         body: JSON.stringify({ install_key: 'local:' + pkg.path, name: pkg.name })
       });
       if (!result.ok) throw new Error(result.error || ('No se pudo iniciar ' + pkg.name));
-      await pollJob(pkg.name);
+      if (result.job_id == null) throw new Error('La PS4 aceptó la solicitud, pero no devolvió el identificador de instalación.');
+      await pollJob(pkg.name, result.job_id);
     }
 
     async function installTheme() {
