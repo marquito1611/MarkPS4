@@ -22,14 +22,15 @@ jobs:
         run: |
           python -m pip install --upgrade gdown
 
-      - name: Download both theme PKGs
+      - name: Download first theme PKG
         run: |
           mkdir -p app/packages
-
-          gdown --fuzzy "https://drive.google.com/file/d/1KK8yqBinHkxRbuLCY4O4tJzApXvPYm2n/view?usp=sharing" \
+          gdown "1KK8yqBinHkxRbuLCY4O4tJzApXvPYm2n" \
             -O "app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg"
 
-          gdown --fuzzy "https://drive.google.com/file/d/1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR/view?usp=sharing" \
+      - name: Download second theme PKG
+        run: |
+          gdown "1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR" \
             -O "app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg"
 
       - name: Verify project files
