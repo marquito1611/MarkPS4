@@ -1,32 +1,59 @@
-name: Build MarkPS4 Theme Store
+name: Build MarkPS4
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  prepare:
+    name: Download MarkPS4 files
     runs-on: ubuntu-latest
 
     steps:
-      - name: Descargar repositorio
+      - name: Download repository
         uses: actions/checkout@v4
 
-      - name: Compilar aplicación PS4
-        uses: OpenOrbis/toolchain-action@main
-        with:
-          version: v0.5.1
-          command: |
-            cd app
-            make
-            PkgTool.Core pkg_build pkg/pkg.gp4 .
+      - name: Install download tool
+        run: |
+          python -m pip install --upgrade gdown
 
-      - name: Publicar PKG compilado
+      - name: Download both theme PKGs
+        run: |
+          mkdir -p app/packages
+
+          gdown --fuzzy "https://drive.google.com/file/d/1KK8yqBinHkxRbuLCY4O4tJzApXvPYm2n/view?usp=sharing" \
+            -O "app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg"
+
+          gdown --fuzzy "https://drive.google.com/file/d/1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR/view?usp=sharing" \
+            -O "app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg"
+
+      - name: Verify project files
+        run: |
+          test -f app/main.cpp
+          test -f app/Makefile
+          test -f app/index.html
+          test -f app/assets/assassins-creed.jpg
+
+          test -s app/packages/1-EP0001-CUSA09303_00-ACDNEWTHEME12345-A0000-V0100.pkg
+          test -s app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg
+
+          echo "All required files were found."
+
+      - name: Prepare interface and themes
+        run: |
+          mkdir -p build/MarkPS4
+          cp app/index.html build/MarkPS4/
+          cp -r app/assets build/MarkPS4/
+          cp -r app/packages build/MarkPS4/
+
+      - name: Upload prepared files
         uses: actions/upload-artifact@v4
         with:
-          name: MarkPS4-Theme-Store
-          path: app/*.pkg
+          name: MarkPS4-prepared-files
+          path: build/MarkPS4/
           if-no-files-found: error
-          retention-days: 14
