@@ -32,6 +32,11 @@ jobs:
           gdown "1OXuuN5d7hLYxABRVHHP-Qz7AV6-CC1rR" \
             -O "app/packages/2-EP0001-CUSA09303_00-ACDNEWTHEME12345.pkg"
 
+      - name: Diagnose project files
+        run: |
+          echo "=== Archivos del proyecto ==="
+          find app -maxdepth 3 -type f -printf '%p (%s bytes)\n'
+            
       - name: Verify project files
         run: |
           test -f app/main.cpp
