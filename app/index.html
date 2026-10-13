@@ -527,9 +527,12 @@
       const card = document.getElementById('installedCard');
       try {
         const data = await api('/api/installed');
-        const list = Array.isArray(data) ? data : (data.games || data.items || data.installed || []);
+        const list = Array.isArray(data) ? data : (data.installed || data.games || data.items || []);
+        // The PS4 payload returns installed title IDs as strings, not objects.
         const match = list.some(item => {
-          const value = String(item.title || item.name || item.title_id || item.titleId || '').toLowerCase();
+          const value = (typeof item === 'string'
+            ? item
+            : String(item.title || item.name || item.title_id || item.titleId || item.tid || '')).toLowerCase();
           return value.includes('cusa09303') || value.includes('assassin') || value.includes('acdnewtheme');
         });
         empty.hidden = match;
