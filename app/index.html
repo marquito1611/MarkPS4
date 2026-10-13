@@ -526,19 +526,14 @@
       const empty = document.getElementById('emptyState');
       const card = document.getElementById('installedCard');
       try {
-        const data = await api('/api/installed');
-        const list = Array.isArray(data) ? data : (data.installed || data.games || data.items || []);
-        // The PS4 payload returns installed title IDs as strings, not objects.
-        const match = list.some(item => {
-          const value = (typeof item === 'string'
-            ? item
-            : String(item.title || item.name || item.title_id || item.titleId || item.tid || '')).toLowerCase();
-          return value.includes('cusa09303') || value.includes('assassin') || value.includes('acdnewtheme');
-        });
-        empty.hidden = match;
-        card.hidden = !match;
+        // /api/installed reports installed applications, not installed PS4 themes.
+        // Treating CUSA09303 (the game title ID) as proof of theme installation is a false positive.
+        await api('/api/installed');
+        empty.hidden = false;
+        card.hidden = true;
+        empty.querySelector('strong').textContent = 'Verificación de temas pendiente';
+        empty.lastChild.textContent = 'El servidor actual solo confirma aplicaciones instaladas; aún falta una comprobación específica de temas.';
       } catch (_) {
-        // Do not claim a theme is installed if the console cannot verify it.
         empty.hidden = false;
         card.hidden = true;
         empty.querySelector('strong').textContent = 'No se pudo consultar la PS4';
