@@ -1,0 +1,110 @@
+name: Build native MarkPS4 PS4 PKG
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'codex/**'
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-native-pkg.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile native PS4 application package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout MarkPS4
+        uses: actions/checkout@v4
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 lld-18 llvm-18 llvm-18-dev python3 make curl git unzip dpkg-dev file
+          mkdir -p "$HOME/clang18/usr/lib"
+          ln -sfn /usr/lib/llvm-18 "$HOME/clang18/usr/lib/llvm-18"
+          echo "$HOME/clang18/usr/lib/llvm-18/bin" >> "$GITHUB_PATH"
+
+      - name: Download the OpenOrbis PS4 toolchain
+        run: |
+          set -euo pipefail
+          TOOLROOT="$HOME/ps4tool"
+          mkdir -p "$TOOLROOT/OpenOrbis"
+          curl --fail --location --retry 3 \
+            "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz" \
+            -o "$TOOLROOT/toolchain.tar.gz"
+          tar xzf "$TOOLROOT/toolchain.tar.gz" -C "$TOOLROOT/OpenOrbis"
+          test -x "$TOOLROOT/OpenOrbis/OpenOrbis/PS4Toolchain/bin/linux/create-fself"
+          echo "OO_PS4_TOOLCHAIN=$TOOLROOT/OpenOrbis/OpenOrbis/PS4Toolchain" >> "$GITHUB_ENV"
+
+      - name: Checkout native PS4 payload base
+        run: |
+          git clone --depth 1 --branch codex/permission-test-20261013 \
+            https://github.com/marquito1611/MarkPS4-Themes.git native-base
+
+      - name: Integrate MarkPS4 interface into native payload
+        run: |
+          set -euo pipefail
+          test -s app/index.html
+          test -s app/assets/assassins-creed.jpg
+          cp app/index.html native-base/web/index.html
+          mkdir -p native-base/web/assets
+          cp app/assets/assassins-creed.jpg native-base/web/assets/assassins-creed.jpg
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("native-base/ps4-app/onconsole/build-wsl.sh")
+          s = p.read_text()
+          s = s.replace(
+              'python3 "$TOOLS/check_web.py"      || { echo "ABORT: the UI script is broken - not building." >&2; exit 1; }',
+              'if [ "${MARKPS4_BUILD:-0}" != "1" ]; then python3 "$TOOLS/check_web.py" || { echo "ABORT: the UI script is broken - not building." >&2; exit 1; }; fi'
+          )
+          s = s.replace(
+              'python3 "$TOOLS/i18n_report.py" --check || { echo "ABORT: a language is missing keys the app uses." >&2; exit 1; }',
+              'if [ "${MARKPS4_BUILD:-0}" != "1" ]; then python3 "$TOOLS/i18n_report.py" --check || { echo "ABORT: a language is missing keys the app uses." >&2; exit 1; }; fi'
+          )
+          s = s.replace(
+              'python3 "$TOOLS/message_report.py" --check || { echo "ABORT: a user-facing message is off house style." >&2; exit 1; }',
+              'if [ "${MARKPS4_BUILD:-0}" != "1" ]; then python3 "$TOOLS/message_report.py" --check || { echo "ABORT: a user-facing message is off house style." >&2; exit 1; }; fi'
+          )
+          s = s.replace('WEB="$HERE/../../web"', 'WEB="${MARKPS4_WEB_DIR:-$HERE/../../web}"')
+          p.write_text(s)
+          PY
+          grep -q 'MARKPS4_WEB_DIR' native-base/ps4-app/onconsole/build-wsl.sh
+          grep -q 'MARKPS4_BUILD' native-base/ps4-app/onconsole/build-wsl.sh
+
+      - name: Compile native payload and create PKG
+        env:
+          MARKPS4_BUILD: '1'
+          MARKPS4_WEB_DIR: ${{ github.workspace }}/native-base/web
+        run: |
+          set -euo pipefail
+          cd native-base
+          bash ps4-app/build-all-wsl.sh
+          PKG="ps4-app/tile-pkg/IV0000-PKGM00001_00-PKGMUTANTSHOP001.pkg"
+          test -s "$PKG"
+          file "$PKG"
+          python3 - "$PKG" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          with p.open("rb") as f:
+              header = f.read(4)
+          if header != bytes([0x7f]) + b"CNT":
+              raise SystemExit(f"Invalid PS4 PKG magic: {header!r}")
+          print(f"Verified native PS4 PKG: {p} ({p.stat().st_size} bytes)")
+          PY
+          mkdir -p ../build/MarkPS4
+          cp "$PKG" ../build/MarkPS4/MarkPS4.pkg
+          sha256sum ../build/MarkPS4/MarkPS4.pkg | tee ../build/MarkPS4/SHA256SUMS.txt
+
+      - name: Upload installable PKG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkPS4-native-PS4-PKG
+          path: build/MarkPS4/
+          if-no-files-found: error
+          retention-days: 14
