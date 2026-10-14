@@ -46,6 +46,8 @@ jobs:
         run: |
           git clone --depth 1 --branch codex/permission-test-20261013 \
             https://github.com/marquito1611/MarkPS4-Themes.git native-base
+          grep -q "Only try the raw loader when HTTP never connected." native-base/ps4-app/tile-pkg/pms/main.c
+          echo "Verified payload handoff fix is present in the native launcher source."
 
       - name: Integrate MarkPS4 interface into native payload
         run: |
