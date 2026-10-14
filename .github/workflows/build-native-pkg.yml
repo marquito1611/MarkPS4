@@ -57,7 +57,8 @@ jobs:
           cp app/assets/assassins-creed.jpg native-base/web/assets/assassins-creed.jpg
           # Set the visible home-screen title to MarkPS4 while preserving the known-good package identity.
           sed -i 's/^TITLE       := PKG MUTANT SHOP$/TITLE       := MarkPS4/' native-base/ps4-app/tile-pkg/Makefile
-          grep -q '^TITLE       := MarkPS4
+          grep -q "TITLE       := MarkPS4" native-base/ps4-app/tile-pkg/Makefile
+          python3 - <<'PY'
           from pathlib import Path
           p = Path("native-base/ps4-app/onconsole/build-wsl.sh")
           s = p.read_text()
