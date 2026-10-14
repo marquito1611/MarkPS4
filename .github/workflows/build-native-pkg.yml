@@ -71,6 +71,14 @@ jobs:
               'python3 "$TOOLS/message_report.py" --check || { echo "ABORT: a user-facing message is off house style." >&2; exit 1; }',
               'if [ "${MARKPS4_BUILD:-0}" != "1" ]; then python3 "$TOOLS/message_report.py" --check || { echo "ABORT: a user-facing message is off house style." >&2; exit 1; }; fi'
           )
+          s = s.replace(
+              'python3 "$TOOLS/test_mods_tabs.py" || { echo "ABORT: the mods console tabs offer the wrong consoles." >&2; exit 1; }',
+              'if [ "${MARKPS4_BUILD:-0}" != "1" ]; then python3 "$TOOLS/test_mods_tabs.py" || { echo "ABORT: the mods console tabs offer the wrong consoles." >&2; exit 1; }; fi'
+          )
+          s = s.replace(
+              'python3 "$TOOLS/test_panel_console_state.py" || { echo "ABORT: the game panel is describing the wrong console." >&2; exit 1; }',
+              'if [ "${MARKPS4_BUILD:-0}" != "1" ]; then python3 "$TOOLS/test_panel_console_state.py" || { echo "ABORT: the game panel is describing the wrong console." >&2; exit 1; }; fi'
+          )
           s = s.replace('WEB="$HERE/../../web"', 'WEB="${MARKPS4_WEB_DIR:-$HERE/../../web}"')
           p.write_text(s)
           PY
