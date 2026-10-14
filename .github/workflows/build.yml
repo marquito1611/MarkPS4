@@ -78,6 +78,11 @@ jobs:
           PY
           node --check build-markps4-inline.js
 
+      - name: Cross-check the real PS4 payload API
+        run: |
+          git clone --depth 1 --branch codex/permission-test-20261013 https://github.com/marquito1611/MarkPS4-Themes.git reference
+          python tools/check_payload_integration.py
+
       - name: Verify PS4 PKG headers
         run: |
           python - <<'PY'
